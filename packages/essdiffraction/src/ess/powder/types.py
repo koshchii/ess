@@ -17,9 +17,9 @@ import scipp as sc
 from scippneutron.io import cif
 from scippneutron.metadata import Person, Software
 
-from ess.reduce.nexus import types as reduce_t
-from ess.reduce.uncertainty import UncertaintyBroadcastMode as _UncertaintyBroadcastMode
-from ess.reduce.unwrap import types as unwrap_t
+from ess.packages.essreduce.src.ess.reduce.nexus import types as reduce_t
+from ess.packages.essreduce.src.ess.reduce.uncertainty import UncertaintyBroadcastMode as _UncertaintyBroadcastMode
+from ess.packages.essreduce.src.ess.reduce.unwrap import types as unwrap_t
 
 EmptyDetector = reduce_t.EmptyDetector
 EmptyMonitor = reduce_t.EmptyMonitor
@@ -40,6 +40,8 @@ DetectorBankSizes = reduce_t.DetectorBankSizes
 DetectorLtotal = unwrap_t.DetectorLtotal
 WavelengthDetector = unwrap_t.WavelengthDetector
 WavelengthMonitor = unwrap_t.WavelengthMonitor
+TofDetector = unwrap_t.TofDetector
+TofMonitor = unwrap_t.TofMonitor
 PulseStrideOffset = unwrap_t.PulseStrideOffset
 LookupTable = unwrap_t.LookupTable
 LookupTableFilename = unwrap_t.LookupTableFilename
@@ -48,19 +50,23 @@ LookupTableRelativeErrorThreshold = unwrap_t.LookupTableRelativeErrorThreshold
 SampleRun = reduce_t.SampleRun
 VanadiumRun = reduce_t.VanadiumRun
 EmptyCanRun = NewType("EmptyCanRun", int)
+CalibrationRun = NewType("CalibrationRun", int)
 
 CaveMonitor = reduce_t.CaveMonitor
 BunkerMonitor = NewType("BunkerMonitor", int)
 
 RunType = TypeVar("RunType", SampleRun, VanadiumRun, EmptyCanRun)
+GeneralRunType = TypeVar("GeneralRunType", SampleRun, VanadiumRun, EmptyCanRun, CalibrationRun)
 MonitorType = TypeVar("MonitorType", CaveMonitor, BunkerMonitor)
-
 
 CalibrationFilename = NewType("CalibrationFilename", str | None)
 """Filename of the instrument calibration file."""
 
 DspacingBins = NewType("DspacingBins", sc.Variable)
 """Bin edges for d-spacing."""
+
+DperpBins = NewType("DperpBins", sc.Variable)
+"""Bin edges for dperp."""
 
 OutFilename = NewType("OutFilename", str)
 """Filename of the output."""
@@ -194,6 +200,12 @@ PixelMaskFilename = NewType("PixelMaskFilename", str)
 
 class RawDataAndMetadata(sciline.Scope[RunType, sc.DataGroup], sc.DataGroup):
     """Raw data and associated metadata."""
+
+
+class FilenameMLZ(sciline.Scope[GeneralRunType, Path], Path): ...
+
+
+class FilepathMLZ(sciline.Scope[GeneralRunType, Path], Path): ...
 
 
 TofMask = NewType("TofMask", Callable | None)
