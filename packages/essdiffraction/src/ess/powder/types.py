@@ -175,6 +175,11 @@ EmptyCanSubtractedIntensityTof = NewType("EmptyCanSubtractedIntensityTof", sc.Da
 """Normalized and empty-can-subtracted data that has been converted to ToF."""
 
 
+class SpectralDetector(sciline.Scope[RunType, sc.DataArray], sc.DataArray):
+    """ToDo
+    """
+
+
 class CorrectedDetector(sciline.Scope[RunType, sc.DataArray], sc.DataArray):
     """Data with masks and applied corrections.
 
@@ -202,6 +207,10 @@ class DspacingMonitor(sciline.Scope[RunType, MonitorType, sc.DataArray], sc.Data
 
 
 class CorrectedDspacing(sciline.Scope[RunType, sc.DataArray], sc.DataArray):
+    """Detector data in d-spacing - 2theta space including corrections."""
+
+
+class Dspacing2D(sciline.Scope[RunType, sc.DataArray], sc.DataArray):
     """Detector data in d-spacing - 2theta space including corrections."""
 
 
