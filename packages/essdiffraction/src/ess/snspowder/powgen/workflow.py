@@ -48,6 +48,7 @@ from ess.packages.essdiffraction.src.ess.powder.grouping import (
     focus_data_dspacing_and_dperp_mlz,
     reduce_to_dspacing_dperp,
     integrate_two_theta,
+    integrate_dperp
 )
 
 from ess.packages.essdiffraction.src.ess.powder.correction import (
@@ -122,7 +123,8 @@ def PowgenMantidWorkflow() -> sciline.Pipeline:
                 focus_data_dspacing_and_dperp_mlz,
                 extract_accumulated_proton_charge,
                 normalize_by_proton_charge_mlz,
-                integrate_two_theta,
+                #integrate_two_theta,
+                integrate_dperp,
                 normalize_by_vanadium_dspacing,
             ]
         ),

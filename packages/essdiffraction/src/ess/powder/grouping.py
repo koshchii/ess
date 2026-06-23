@@ -142,7 +142,6 @@ def focus_data_dspacing_and_dperp_mlz(
         #         dspacing_bins=dspacing_bins, two_theta_bins=twotheta_bins
         #     )
         # )
-
     return CorrectedDspacing[RunType](data)
 
 
@@ -164,6 +163,19 @@ def integrate_two_theta(
         data.nansum(dim='two_theta')
         if data.bins is None
         else data.bins.concat('two_theta')
+    )
+
+
+def integrate_dperp(
+    data: NormalizedDspacing[RunType],
+) -> FocussedDataDspacing[RunType]:
+    """Integrate the dperp dimension of the data."""
+    if 'dperp' not in data.dims:
+        raise sc.DimensionError("Data does not have a 'dperp' dimension.")
+    return FocussedDataDspacing[RunType](
+        data.nansum(dim='dperp')
+        if data.bins is None
+        else data.bins.concat('dperp')
     )
 
 
