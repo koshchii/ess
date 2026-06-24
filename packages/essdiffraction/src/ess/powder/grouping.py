@@ -167,7 +167,7 @@ def integrate_two_theta(
 
 
 def integrate_dperp(
-    data: NormalizedDspacing[RunType],
+    data: Dspacing2D[RunType],
 ) -> FocussedDataDspacing[RunType]:
     """Integrate the dperp dimension of the data."""
     if 'dperp' not in data.dims:
