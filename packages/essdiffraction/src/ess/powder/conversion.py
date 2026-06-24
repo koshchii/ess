@@ -251,7 +251,7 @@ def powder_coordinate_transformation_graph_mlz(
     )
 
 
-def d_dperp_coordinate_transformation_graph_mlz() -> ElasticCoordTransformGraphMLZ:
+def p2d_coordinate_transformation_graph_mlz() -> ElasticCoordTransformGraphMLZ:
     """
     Generate a coordinate transformation graph for powder diffraction.
     The graph includes the additional coordinate dperp, which is needed in MLZ workflows.
