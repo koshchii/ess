@@ -2,6 +2,7 @@
 # Copyright (c) 2024 Scipp contributors (https://github.com/scipp)
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import NewType
 
 import pytest
 import sciline as sl
@@ -12,14 +13,10 @@ from scippneutron.metadata import RadiationProbe, SourceType
 
 from ess.reduce.nexus import compute_component_position, load_from_path, workflow
 from ess.reduce.nexus.types import (
-    BackgroundRun,
     Beamline,
-    EmptyBeamRun,
+    DiskChoppers,
     EmptyDetector,
     Filename,
-    FrameMonitor0,
-    FrameMonitor1,
-    FrameMonitor2,
     Measurement,
     MonitorType,
     NeXusComponentLocationSpec,
@@ -35,13 +32,19 @@ from ess.reduce.nexus.types import (
     SampleRun,
     Source,
     TimeInterval,
-    TransmissionMonitor,
 )
 from ess.reduce.nexus.workflow import (
     GenericNeXusWorkflow,
     LoadDetectorWorkflow,
     LoadMonitorWorkflow,
 )
+
+BackgroundRun = NewType('BackgroundRun', int)
+EmptyBeamRun = NewType('EmptyBeamRun', int)
+
+Monitor1 = NewType('Monitor1', int)
+Monitor2 = NewType('Monitor2', int)
+Monitor3 = NewType('Monitor3', int)
 
 
 @pytest.fixture(params=[{}, {'aux': 1}])
@@ -535,9 +538,9 @@ def test_assemble_detector_preserves_masks(calibrated_detector, detector_event_d
 @pytest.fixture
 def nexus_monitor(
     depends_on: snx.TransformationChain,
-) -> workflow.NeXusComponent[FrameMonitor1, SampleRun]:
+) -> workflow.NeXusComponent[Monitor1, SampleRun]:
     data = sc.DataArray(sc.scalar(1.2), coords={'something': sc.scalar(13)})
-    return workflow.NeXusComponent[FrameMonitor1, SampleRun](
+    return workflow.NeXusComponent[Monitor1, SampleRun](
         sc.DataGroup(data=data, depends_on=depends_on)
     )
 
@@ -583,7 +586,7 @@ def test_get_calibrated_monitor_with_time_dependent_transformation(
     """
     # Create a simple monitor
     data = sc.DataArray(sc.scalar(1.2), coords={'something': sc.scalar(13)})
-    nexus_monitor = workflow.NeXusComponent[FrameMonitor1, SampleRun](
+    nexus_monitor = workflow.NeXusComponent[Monitor1, SampleRun](
         sc.DataGroup(data=data, depends_on=time_dependent_depends_on)
     )
 
@@ -612,8 +615,8 @@ def test_get_calibrated_monitor_with_time_dependent_transformation(
 
 
 @pytest.fixture
-def calibrated_monitor() -> workflow.EmptyMonitor[SampleRun, FrameMonitor1]:
-    return workflow.EmptyMonitor[SampleRun, FrameMonitor1](
+def calibrated_monitor() -> workflow.EmptyMonitor[SampleRun, Monitor1]:
+    return workflow.EmptyMonitor[SampleRun, Monitor1](
         sc.DataArray(
             sc.scalar(0),
             coords={'position': sc.vector([1.0, 2.0, 3.0], unit='m')},
@@ -622,10 +625,10 @@ def calibrated_monitor() -> workflow.EmptyMonitor[SampleRun, FrameMonitor1]:
 
 
 @pytest.fixture
-def monitor_event_data() -> workflow.NeXusData[FrameMonitor1, SampleRun]:
+def monitor_event_data() -> workflow.NeXusData[Monitor1, SampleRun]:
     content = sc.DataArray(sc.ones(dims=['event'], shape=[17], unit='counts'))
     weights = sc.bins(data=content, dim='event')
-    return workflow.NeXusData[FrameMonitor1, SampleRun](
+    return workflow.NeXusData[Monitor1, SampleRun](
         sc.DataArray(
             weights,
             coords={
@@ -638,10 +641,10 @@ def monitor_event_data() -> workflow.NeXusData[FrameMonitor1, SampleRun]:
 
 
 @pytest.fixture
-def monitor_histogram_data() -> workflow.NeXusData[FrameMonitor1, SampleRun]:
+def monitor_histogram_data() -> workflow.NeXusData[Monitor1, SampleRun]:
     time = sc.epoch(unit='ns') + sc.arange('time', 1, 6, unit='s').to(unit='ns')
     frame_time = sc.arange('frame_time', 12, unit='ms').to(unit='ns')
-    return workflow.NeXusData[FrameMonitor1, SampleRun](
+    return workflow.NeXusData[Monitor1, SampleRun](
         sc.DataArray(
             10.0
             * sc.arange('x', 5 * 12, unit='counts').fold(
@@ -716,10 +719,10 @@ def test_assemble_monitor_preserves_masks(calibrated_monitor, monitor_event_data
 
 
 def test_load_event_monitor_workflow(loki_tutorial_sample_run_60250: Path) -> None:
-    wf = LoadMonitorWorkflow(run_types=[SampleRun], monitor_types=[FrameMonitor1])
+    wf = LoadMonitorWorkflow(run_types=[SampleRun], monitor_types=[Monitor1])
     wf[Filename[SampleRun]] = loki_tutorial_sample_run_60250
-    wf[NeXusName[FrameMonitor1]] = 'monitor_1'
-    da = wf.compute(RawMonitor[SampleRun, FrameMonitor1])
+    wf[NeXusName[Monitor1]] = 'monitor_1'
+    da = wf.compute(RawMonitor[SampleRun, Monitor1])
     assert 'position' in da.coords
     assert da.bins is not None
     assert da.dims == ('event_time_zero',)
@@ -727,10 +730,10 @@ def test_load_event_monitor_workflow(loki_tutorial_sample_run_60250: Path) -> No
 
 
 def test_load_histogram_monitor_workflow(dream_coda_test_file: Path) -> None:
-    wf = LoadMonitorWorkflow(run_types=[SampleRun], monitor_types=[FrameMonitor1])
+    wf = LoadMonitorWorkflow(run_types=[SampleRun], monitor_types=[Monitor1])
     wf[Filename[SampleRun]] = dream_coda_test_file
-    wf[NeXusName[FrameMonitor1]] = 'monitor_bunker'
-    da = wf.compute(RawMonitor[SampleRun, FrameMonitor1])
+    wf[NeXusName[Monitor1]] = 'monitor_bunker'
+    da = wf.compute(RawMonitor[SampleRun, Monitor1])
     assert 'position' in da.coords
     assert da.bins is None
     assert set(da.dims) == {'time', 'frame_time'}
@@ -778,16 +781,16 @@ def test_load_empty_histogram_detector_workflow(
 def test_generic_nexus_workflow(
     preopen: bool, loki_tutorial_sample_run_60250: Path
 ) -> None:
-    wf = GenericNeXusWorkflow(run_types=[SampleRun], monitor_types=[FrameMonitor1])
+    wf = GenericNeXusWorkflow(run_types=[SampleRun], monitor_types=[Monitor1])
     wf[Filename[SampleRun]] = loki_tutorial_sample_run_60250
-    wf[NeXusName[FrameMonitor1]] = 'monitor_1'
+    wf[NeXusName[Monitor1]] = 'monitor_1'
     wf[NeXusName[snx.NXdetector]] = 'larmor_detector'
     wf[PreopenNeXusFile] = preopen
     da = wf.compute(RawDetector[SampleRun])
     assert 'position' in da.coords
     assert da.bins is not None
     assert da.dims == ('detector_number',)
-    da = wf.compute(RawMonitor[SampleRun, FrameMonitor1])
+    da = wf.compute(RawMonitor[SampleRun, Monitor1])
     assert 'position' in da.coords
     assert da.bins is not None
     assert da.dims == ('event_time_zero',)
@@ -853,41 +856,36 @@ def test_generic_nexus_workflow_load_measurement_metadata(
 
 
 def test_generic_nexus_workflow_includes_only_given_run_and_monitor_types() -> None:
-    wf = GenericNeXusWorkflow(
-        run_types=[SampleRun], monitor_types=[FrameMonitor1, FrameMonitor0]
-    )
+    wf = GenericNeXusWorkflow(run_types=[SampleRun], monitor_types=[Monitor2, Monitor1])
     graph = wf.underlying_graph
 
     # Check some examples to avoid relying entirely on complicated loops below.
     assert RawDetector[SampleRun] in graph
     assert RawDetector[BackgroundRun] not in graph
-    assert RawMonitor[SampleRun, FrameMonitor1] in graph
-    assert RawMonitor[SampleRun, FrameMonitor2] not in graph
-    assert RawMonitor[SampleRun, FrameMonitor0] in graph
-    assert RawMonitor[BackgroundRun, FrameMonitor0] not in graph
-    assert RawMonitor[BackgroundRun, FrameMonitor1] not in graph
-    assert RawMonitor[BackgroundRun, FrameMonitor2] not in graph
+    assert RawMonitor[SampleRun, Monitor1] in graph
+    assert RawMonitor[SampleRun, Monitor2] in graph
+    assert RawMonitor[SampleRun, Monitor3] not in graph
+    assert RawMonitor[BackgroundRun, Monitor1] not in graph
+    assert RawMonitor[BackgroundRun, Monitor2] not in graph
+    assert RawMonitor[BackgroundRun, Monitor3] not in graph
     assert RawChoppers[SampleRun] in graph
     assert RawChoppers[BackgroundRun] not in graph
 
-    assert NeXusComponentLocationSpec[FrameMonitor0, SampleRun] in graph
-    assert NeXusComponentLocationSpec[FrameMonitor1, SampleRun] in graph
-    assert NeXusComponentLocationSpec[FrameMonitor2, SampleRun] not in graph
+    assert NeXusComponentLocationSpec[Monitor1, SampleRun] in graph
+    assert NeXusComponentLocationSpec[Monitor2, SampleRun] in graph
+    assert NeXusComponentLocationSpec[Monitor3, SampleRun] not in graph
     assert NeXusComponentLocationSpec[snx.NXdetector, SampleRun] in graph
     assert NeXusComponentLocationSpec[snx.NXsample, SampleRun] in graph
     assert NeXusComponentLocationSpec[snx.NXsource, SampleRun] in graph
-    assert NeXusComponentLocationSpec[FrameMonitor0, BackgroundRun] not in graph
-    assert NeXusComponentLocationSpec[FrameMonitor1, BackgroundRun] not in graph
-    assert NeXusComponentLocationSpec[FrameMonitor2, BackgroundRun] not in graph
+    assert NeXusComponentLocationSpec[Monitor1, BackgroundRun] not in graph
+    assert NeXusComponentLocationSpec[Monitor2, BackgroundRun] not in graph
+    assert NeXusComponentLocationSpec[Monitor3, BackgroundRun] not in graph
     assert NeXusComponentLocationSpec[snx.NXdetector, BackgroundRun] not in graph
     assert NeXusComponentLocationSpec[snx.NXsample, BackgroundRun] not in graph
     assert NeXusComponentLocationSpec[snx.NXsource, BackgroundRun] not in graph
 
     excluded_run_types = set(RunType.__constraints__) - {SampleRun}
-    excluded_monitor_types = set(MonitorType.__constraints__) - {
-        FrameMonitor1,
-        FrameMonitor0,
-    }
+    excluded_monitor_types = set(MonitorType.__constraints__) - {Monitor1, Monitor2}
     for node in graph:
         assert_not_contains_type_arg(node, excluded_run_types)
         assert_not_contains_type_arg(node, excluded_monitor_types)
@@ -896,19 +894,19 @@ def test_generic_nexus_workflow_includes_only_given_run_and_monitor_types() -> N
 def test_generic_nexus_workflow_includes_only_given_run_types() -> None:
     wf = GenericNeXusWorkflow(
         run_types=[EmptyBeamRun],
-        monitor_types=[FrameMonitor0, FrameMonitor1, FrameMonitor2],
+        monitor_types=[Monitor1, Monitor2, Monitor3],
     )
     graph = wf.underlying_graph
 
     # Check some examples to avoid relying entirely on complicated loops below.
     assert RawDetector[EmptyBeamRun] in graph
     assert RawDetector[SampleRun] not in graph
-    assert RawMonitor[EmptyBeamRun, FrameMonitor1] in graph
-    assert RawMonitor[EmptyBeamRun, FrameMonitor2] in graph
-    assert RawMonitor[EmptyBeamRun, FrameMonitor0] in graph
-    assert RawMonitor[SampleRun, FrameMonitor1] not in graph
-    assert RawMonitor[SampleRun, FrameMonitor2] not in graph
-    assert RawMonitor[SampleRun, FrameMonitor0] not in graph
+    assert RawMonitor[EmptyBeamRun, Monitor1] in graph
+    assert RawMonitor[EmptyBeamRun, Monitor2] in graph
+    assert RawMonitor[EmptyBeamRun, Monitor3] in graph
+    assert RawMonitor[SampleRun, Monitor1] not in graph
+    assert RawMonitor[SampleRun, Monitor2] not in graph
+    assert RawMonitor[SampleRun, Monitor3] not in graph
     assert RawChoppers[EmptyBeamRun] in graph
     assert RawChoppers[SampleRun] not in graph
 
@@ -920,28 +918,23 @@ def test_generic_nexus_workflow_includes_only_given_run_types() -> None:
 def test_generic_nexus_workflow_includes_only_given_monitor_types() -> None:
     wf = GenericNeXusWorkflow(
         run_types=[SampleRun, BackgroundRun],
-        monitor_types=[TransmissionMonitor, FrameMonitor1],
+        monitor_types=[Monitor1],
     )
     graph = wf.underlying_graph
 
     # Check some examples to avoid relying entirely on complicated loops below.
     assert RawDetector[SampleRun] in graph
     assert RawDetector[BackgroundRun] in graph
-    assert RawMonitor[SampleRun, TransmissionMonitor] in graph
-    assert RawMonitor[SampleRun, FrameMonitor1] in graph
-    assert RawMonitor[SampleRun, FrameMonitor2] not in graph
-    assert RawMonitor[SampleRun, FrameMonitor0] not in graph
-    assert RawMonitor[BackgroundRun, TransmissionMonitor] in graph
-    assert RawMonitor[BackgroundRun, FrameMonitor1] in graph
-    assert RawMonitor[BackgroundRun, FrameMonitor2] not in graph
-    assert RawMonitor[BackgroundRun, FrameMonitor0] not in graph
+    assert RawMonitor[SampleRun, Monitor1] in graph
+    assert RawMonitor[SampleRun, Monitor2] not in graph
+    assert RawMonitor[SampleRun, Monitor3] not in graph
+    assert RawMonitor[BackgroundRun, Monitor1] in graph
+    assert RawMonitor[BackgroundRun, Monitor2] not in graph
+    assert RawMonitor[BackgroundRun, Monitor3] not in graph
     assert RawChoppers[SampleRun] in graph
     assert RawChoppers[BackgroundRun] in graph
 
-    excluded_monitor_types = set(MonitorType.__constraints__) - {
-        FrameMonitor1,
-        TransmissionMonitor,
-    }
+    excluded_monitor_types = set(MonitorType.__constraints__) - {Monitor1}
     for node in graph:
         assert_not_contains_type_arg(node, excluded_monitor_types)
 
@@ -995,3 +988,206 @@ def test_generic_nexus_workflow_load_custom_group_user(
     user_info = wf.compute(UserInfo[SampleRun])
     assert user_info['affiliation'] == 'ESS'
     assert user_info['name'] == 'John Doe'
+
+
+def _make_chopper_log(values):
+    if values.size == 1:
+        values = sc.concat([values], dim='time')
+
+    return sc.DataArray(
+        data=values.rename_dims({values.dim: 'time'}),
+        coords={
+            'time': sc.datetime('2022-01-01T00:00:00'),
+            'average_value': values.mean(),
+            'minimum_value': values.min(),
+            'maximum_value': values.max(),
+        },
+    )
+
+
+def _make_empty_log():
+    return sc.DataArray(
+        data=sc.array(dims=['time'], values=[]),
+        coords={
+            'time': sc.datetime('2022-01-01T00:00:00'),
+            'average_value': sc.scalar(0.0),
+            'minimum_value': sc.scalar(0.0),
+            'maximum_value': sc.scalar(0.0),
+        },
+    )
+
+
+def test_convert_raw_to_disk_choppers():
+    wf = GenericNeXusWorkflow(run_types=[SampleRun], monitor_types=[])
+    choppers = sc.DataGroup(
+        {
+            'chopper1': sc.DataGroup(
+                {
+                    'position': sc.vector([0, 0, 6], unit='m'),
+                    'delay': _make_chopper_log(sc.scalar(0, unit='ns')),
+                    'radius': sc.scalar(0.5, unit='m'),
+                    'rotation_speed_setpoint': _make_chopper_log(
+                        sc.scalar(14.0, unit='Hz')
+                    ),
+                    'rotation_speed': _make_chopper_log(
+                        sc.array(dims=['time'], values=[14.1, 13.9, 14.001], unit='Hz')
+                    ),
+                    'slit_edges': sc.array(
+                        dims=['edge'], values=[7.35, 54.08], unit='deg'
+                    ),
+                    'beam_position': sc.scalar(0.0, unit='deg'),
+                }
+            )
+        }
+    )
+    wf[RawChoppers[SampleRun]] = choppers
+    disk_choppers = wf.compute(DiskChoppers[SampleRun])
+    assert 'chopper1' in disk_choppers
+    chopper1 = disk_choppers['chopper1']
+    assert sc.identical(chopper1.axle_position, sc.vector([0, 0, 6], unit='m'))
+    assert sc.identical(chopper1.phase, sc.scalar(0.0, unit='rad'))
+    assert sc.identical(chopper1.radius, sc.scalar(0.5, unit='m'))
+    assert sc.identical(chopper1.frequency, sc.scalar(14.0, unit='Hz'))
+
+
+def test_convert_raw_to_disk_choppers_no_beam_position():
+    wf = GenericNeXusWorkflow(run_types=[SampleRun], monitor_types=[])
+    choppers = sc.DataGroup(
+        {
+            'chopper1': sc.DataGroup(
+                {
+                    'position': sc.vector([0, 0, 6], unit='m'),
+                    'delay': _make_chopper_log(sc.scalar(0, unit='ns')),
+                    'radius': sc.scalar(0.5, unit='m'),
+                    'rotation_speed_setpoint': _make_chopper_log(
+                        sc.scalar(14.0, unit='Hz')
+                    ),
+                    'rotation_speed': _make_chopper_log(
+                        sc.array(dims=['time'], values=[14.1, 13.9, 14.001], unit='Hz')
+                    ),
+                    'slit_edges': sc.array(
+                        dims=['edge'], values=[7.35, 54.08], unit='deg'
+                    ),
+                }
+            )
+        }
+    )
+    wf[RawChoppers[SampleRun]] = choppers
+    disk_choppers = wf.compute(DiskChoppers[SampleRun])
+
+    assert disk_choppers['chopper1'].beam_position == sc.scalar(0.0, unit='deg'), (
+        "Expected default beam position of 0.0 deg when 'beam_position' is missing"
+    )
+
+
+def test_choppers_with_empty_logs_are_dropped_in_conversion_to_disk_choppers():
+    wf = GenericNeXusWorkflow(run_types=[SampleRun], monitor_types=[])
+    choppers = sc.DataGroup(
+        {
+            'chopper1': sc.DataGroup(
+                {
+                    'position': sc.vector([0, 0, 6], unit='m'),
+                    'delay': _make_chopper_log(sc.scalar(0, unit='ns')),
+                    'radius': sc.scalar(0.5, unit='m'),
+                    'rotation_speed_setpoint': _make_chopper_log(
+                        sc.scalar(14.0, unit='Hz')
+                    ),
+                    'rotation_speed': _make_chopper_log(
+                        sc.array(dims=['time'], values=[14.1, 13.9, 14.001], unit='Hz')
+                    ),
+                    'slit_edges': sc.array(
+                        dims=['edge'], values=[7.35, 54.08], unit='deg'
+                    ),
+                }
+            ),
+            'chopper2': sc.DataGroup(
+                {
+                    'position': sc.vector([0, 0, 8], unit='m'),
+                    'delay': _make_empty_log(),
+                    'radius': sc.scalar(0.5, unit='m'),
+                    'rotation_speed_setpoint': _make_empty_log(),
+                    'rotation_speed': _make_empty_log(),
+                    'slit_edges': sc.array(
+                        dims=['edge'], values=[7.35, 54.08], unit='deg'
+                    ),
+                }
+            ),
+        }
+    )
+
+    wf[RawChoppers[SampleRun]] = choppers
+    disk_choppers = wf.compute(DiskChoppers[SampleRun])
+    assert 'chopper1' in disk_choppers, "Expected 'chopper1'"
+    assert 'chopper2' not in disk_choppers, (
+        "Expected 'chopper2' to be dropped due to empty logs"
+    )
+
+
+def test_convert_raw_to_disk_choppers_no_setpoint_fallsback_to_rotation_speed():
+    wf = GenericNeXusWorkflow(run_types=[SampleRun], monitor_types=[])
+    choppers = sc.DataGroup(
+        {
+            'chopper1': sc.DataGroup(
+                {
+                    'position': sc.vector([0, 0, 6], unit='m'),
+                    'delay': _make_chopper_log(sc.scalar(0, unit='ns')),
+                    'radius': sc.scalar(0.5, unit='m'),
+                    'rotation_speed': _make_chopper_log(
+                        sc.array(dims=['time'], values=[14.0], unit='Hz')
+                    ),
+                    'slit_edges': sc.array(
+                        dims=['edge'], values=[7.35, 54.08], unit='deg'
+                    ),
+                    'beam_position': sc.scalar(0.0, unit='deg'),
+                }
+            )
+        }
+    )
+    wf[RawChoppers[SampleRun]] = choppers
+    disk_choppers = wf.compute(DiskChoppers[SampleRun])
+    assert 'chopper1' in disk_choppers
+    chopper1 = disk_choppers['chopper1']
+    assert sc.identical(chopper1.frequency, sc.scalar(14.0, unit='Hz'))
+
+
+def test_convert_raw_to_disk_choppers_moving_position():
+    wf = GenericNeXusWorkflow(run_types=[SampleRun], monitor_types=[])
+
+    pos = sc.vector([0, 0, 6], unit="m")
+
+    choppers = sc.DataGroup(
+        {
+            'chopper1': sc.DataGroup(
+                {
+                    'position': sc.DataArray(
+                        data=sc.concat([pos], dim='time'),
+                        coords={
+                            'time': sc.datetime('2022-01-01T00:00:00'),
+                            'average_value': pos,
+                            'minimum_value': pos,
+                            'maximum_value': pos,
+                        },
+                    ),
+                    'delay': _make_chopper_log(sc.scalar(0, unit='ns')),
+                    'radius': sc.scalar(0.5, unit='m'),
+                    'rotation_speed_setpoint': _make_chopper_log(
+                        sc.scalar(14.0, unit='Hz')
+                    ),
+                    'rotation_speed': _make_chopper_log(
+                        sc.array(dims=['time'], values=[14.1, 13.9, 14.001], unit='Hz')
+                    ),
+                    'slit_edges': sc.array(
+                        dims=['edge'], values=[7.35, 54.08], unit='deg'
+                    ),
+                    'beam_position': sc.scalar(0.0, unit='deg'),
+                }
+            )
+        }
+    )
+
+    wf[RawChoppers[SampleRun]] = choppers
+    disk_choppers = wf.compute(DiskChoppers[SampleRun])
+    assert sc.identical(
+        disk_choppers['chopper1'].axle_position,
+        sc.vector([0, 0, 6], unit='m'),
+    ), "Expected position to be taken from the first time point of the log"

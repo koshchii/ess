@@ -53,7 +53,7 @@ VanadiumRun = reduce_t.VanadiumRun
 EmptyVanadiumCanRun = NewType("EmptyVanadiumCanRun", int)
 CalibrationRun = NewType("CalibrationRun", int)
 
-CaveMonitor = reduce_t.CaveMonitor
+CaveMonitor = NewType("CaveMonitor", int)
 BunkerMonitor = NewType("BunkerMonitor", int)
 
 RunType = TypeVar("RunType", SampleRun, EmptyCanRun, VanadiumRun, EmptyVanadiumCanRun)

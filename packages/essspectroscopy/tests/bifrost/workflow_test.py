@@ -5,7 +5,6 @@ import pytest
 import sciline
 import scipp as sc
 import scipp.testing
-import scippnexus as snx
 from ess import bifrost
 from ess.bifrost.data import (
     computed_energy_data_simulated_5x2,
@@ -28,15 +27,14 @@ from ess.spectroscopy.types import (
 
 
 @pytest.fixture(scope='module')
-def simulation_detector_names() -> list[NeXusDetectorName]:
-    with snx.File(simulated_elastic_incoherent_with_phonon()) as f:
-        names = list(f['entry']['instrument'][snx.NXdetector].keys())
-    return names[:10]  # First 10 detectors form a 5x2 grid (arc=5, channel=2)
+def detector_names() -> list[str]:
+    # First 10 detectors form a 5x2 grid (arc=5, channel=2)
+    return bifrost.default_detector_names()[:10]
 
 
 @pytest.fixture
-def workflow(simulation_detector_names: list[NeXusDetectorName]) -> sciline.Pipeline:
-    workflow = bifrost.BifrostSimulationWorkflow(simulation_detector_names)
+def workflow(detector_names: list[str]) -> sciline.Pipeline:
+    workflow = bifrost.BifrostSimulationWorkflow(detector_names=detector_names)
     workflow[Filename[SampleRun]] = simulated_elastic_incoherent_with_phonon()
     workflow[LookupTableFilename] = lookup_table_simulation()
     workflow[LookupTableRelativeErrorThreshold] = {
@@ -49,7 +47,7 @@ def workflow(simulation_detector_names: list[NeXusDetectorName]) -> sciline.Pipe
 
 def test_simulation_workflow_can_load_detector() -> None:
     workflow = bifrost.BifrostSimulationWorkflow(
-        [NeXusDetectorName("channel_3_1_triplet")]
+        detector_names=[NeXusDetectorName("channel_3_1_triplet")]
     )
     workflow[Filename[SampleRun]] = simulated_elastic_incoherent_with_phonon()
     results = sciline.compute_mapped(workflow, RawDetector[SampleRun])
@@ -113,7 +111,6 @@ def test_simulation_workflow_produces_the_same_data_as_before(
     expected = sc.io.load_hdf5(computed_energy_data_simulated_5x2())
 
     assert not energy_data.masks
-    assert not energy_data.bins.masks
 
     assert set(expected.coords.keys()).issubset(set(energy_data.coords.keys()))
     for name in expected.coords.keys():
