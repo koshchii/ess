@@ -33,6 +33,8 @@ jobs:
             file_output: true
           - package: essreflectometry
             file_output: true
+          - package: essimaging
+            file_output: true
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
@@ -123,7 +125,7 @@ jobs:
         with:
           version: "0.7.21"
           python-version: "3.11"
-          cache-suffix: ${{ matrix.package }}
+          cache-suffix: ${{ matrix.package }}-lower-bound
       - name: Test with lowest direct dependencies
         working-directory: packages/${{ matrix.package }}
         run: uv run --extra=test --resolution=lowest-direct pytest
@@ -150,7 +152,7 @@ jobs:
         with:
           version: "0.7.21"
           python-version: "3.11"
-          cache-suffix: ${{ matrix.package }}
+          cache-suffix: ${{ matrix.package }}-latest
       - name: Test with latest dependencies
         working-directory: packages/${{ matrix.package }}
         run: uv run --extra=test --resolution=highest pytest

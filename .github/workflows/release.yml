@@ -84,7 +84,7 @@ jobs:
 
   publish:
     name: Publish to PyPI
-    needs: [ determine-package, build ]
+    needs: build
     runs-on: ubuntu-24.04
     environment: release
     if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' }}
@@ -128,14 +128,15 @@ jobs:
           mv docs_html documentation-${PACKAGE}-${VERSION}
           zip -r documentation-${PACKAGE}-${VERSION}.zip documentation-${PACKAGE}-${VERSION}
       - name: Upload release assets
-        uses: svenstaro/upload-release-action@v2
-        with:
-          file: ./documentation-${{ needs.determine-package.outputs.package }}-${{ needs.determine-package.outputs.version }}.zip
-          overwrite: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSET-FILE-PATH: ./documentation-${{ needs.determine-package.outputs.package }}-${{ needs.determine-package.outputs.version }}.zip
+          TAG: ${{ needs.determine-package.outputs.package }}/${{ needs.determine-package.outputs.version }}
+        run: gh release upload ${TAG} ${ASSET-FILE-PATH} --clobber  # Overwrite existing assets of the same name.
 
   notes:
     name: Update notes
-    needs: [ determine-package, publish ]
+    needs: [ determine-package ]
     runs-on: ubuntu-slim
     if: ${{ always() && needs.determine-package.outputs.lastversion }}
     permissions:
@@ -180,7 +181,7 @@ jobs:
         run: cat .ess_release_cache/${PACKAGE}-${VERSION}-${PACKAGE}-${LASTVERSION}-releasenote.md >> new-release-note.md
       - name: Check the generated note
         run: cat new-release-note.md
-      - name: Upload release note
+      - name: Upload release note and publish the release
         if: ${{ github.event_name != 'workflow_dispatch' }}
         env:
           GH_TOKEN: ${{ github.token }}
